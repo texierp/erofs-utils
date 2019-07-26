@@ -18,6 +18,7 @@
 #include "erofs/cache.h"
 #include "erofs/io.h"
 #include "erofs/compress.h"
+#include "erofs/xattr.h"
 
 struct erofs_sb_info sbi;
 
@@ -363,9 +364,11 @@ static bool erofs_bh_flush_write_inode(struct erofs_buffer_head *bh)
 
 	/* let's support v1 currently */
 	struct erofs_inode_v1 v1 = {0};
+	const u16 icount = EROFS_INODE_XATTR_ICOUNT(inode->xattr_isize);
 	int ret;
 
 	v1.i_advise = cpu_to_le16(0 | (inode->data_mapping_mode << 1));
+	v1.i_xattr_icount = cpu_to_le16(icount);
 	v1.i_mode = cpu_to_le16(inode->i_mode);
 	v1.i_nlink = cpu_to_le16(inode->i_nlink);
 	v1.i_size = cpu_to_le32((u32)inode->i_size);
@@ -397,6 +400,20 @@ static bool erofs_bh_flush_write_inode(struct erofs_buffer_head *bh)
 	if (ret)
 		return false;
 	off += inode->inode_isize;
+
+	if (inode->xattr_isize) {
+		char *xattrs = erofs_export_xattr_ibody(&inode->i_xattrs,
+							inode->xattr_isize);
+		if (IS_ERR(xattrs))
+			return false;
+
+		ret = dev_write(xattrs, off, inode->xattr_isize);
+		free(xattrs);
+		if (ret)
+			return false;
+
+		off += inode->xattr_isize;
+	}
 
 	if (inode->extent_isize) {
 		/* write compression metadata */
@@ -612,6 +629,7 @@ struct erofs_inode *erofs_new_inode(void)
 	inode->i_count = 1;
 
 	init_list_head(&inode->i_subdirs);
+	init_list_head(&inode->i_xattrs);
 	inode->xattr_isize = 0;
 	inode->extent_isize = 0;
 
@@ -698,6 +716,11 @@ struct erofs_inode *erofs_mkfs_build_tree(struct erofs_inode *dir)
 	DIR *_dir;
 	struct dirent *dp;
 	struct erofs_dentry *d;
+
+	ret = erofs_prepare_xattr_ibody(dir->i_srcpath, &dir->i_xattrs);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	dir->xattr_isize = ret;
 
 	if (!S_ISDIR(dir->i_mode)) {
 		if (S_ISLNK(dir->i_mode)) {
