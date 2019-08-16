@@ -1,0 +1,19 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+. ./common
+
+imgfile="$SCRATCH_MNT/test11.img"
+[ -f "$imgfile" ] || exit 1
+
+teardown_hook() {
+	umount "$TEST_DIR" 2> /dev/null
+	rm -f "$imgfile"
+}
+
+erofs_mount "$imgfile"
+verify_image "$TEST_DIR" ../
+
+erofs_umount
+teardown_hook
+

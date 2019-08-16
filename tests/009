@@ -1,0 +1,23 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+. ./common
+
+testdir=$SCRATCH_MNT/test5
+imgfile=${testdir}.img
+
+teardown_hook() {
+	umount "$TEST_DIR" 2> /dev/null
+	rm -rf $outputfile
+}
+
+ttypenul='fifo:0,0'
+
+erofs_mount "$imgfile"
+
+[ "$(stat -c "%F:%t,%T" $TEST_DIR/pipefile | tr -d '\n')" = "$ttypenul" ] || \
+	exit_failed "-->checkpipe FAILED"
+
+erofs_umount
+teardown_hook
+

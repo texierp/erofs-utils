@@ -1,0 +1,32 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+. ./common
+
+testdir=$SCRATCH_MNT/test3
+imgfile=${testdir}.img
+
+rm -rf $testdir
+mkdir -p $testdir
+
+teardown_hook() {
+	rm -rf $testdir
+}
+
+# test long symlink (non-fast symlink)
+FNAME1=$(printf %255s | tr " " "x")
+FNAME4="$FNAME1/$FNAME1/$FNAME1/$FNAME1"
+FNAME="$FNAME4/$FNAME4/$FNAME4/$FNAME4"
+
+ln -s $FNAME $testdir/symlink
+
+erofs_mkfs "$imgfile $testdir"
+sz=$(file_size "$imgfile")
+
+teardown_hook
+
+if [ $sz -le 0 ]; then
+	echo "invalid size $sz"
+	exit 1
+fi
+

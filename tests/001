@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+. ./common
+
+outputfile=test1.img
+
+teardown_hook() {
+	rm -rf $outputfile
+}
+
+erofs_mkfs_err "-zunknownalg $outputfile ../lib"
+sz=$(file_size "$outputfile")
+
+teardown_hook
+

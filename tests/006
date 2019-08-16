@@ -1,0 +1,26 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+. ./common
+
+testdir=$SCRATCH_MNT/test2
+imgfile=${testdir}.img
+
+teardown_hook() {
+	umount "$TEST_DIR" 2> /dev/null
+	rm -rf $outputfile
+}
+
+# test short symlink (fast symlink)
+MD5='0b0cfc07fca81c956ab9181d8576f4a8'
+
+erofs_mount "$imgfile"
+
+realmd5=$(readlink $TEST_DIR/symlink | tr -d '\n' | md5sum | cut -d' ' -f1)
+
+[ $realmd5 = $MD5 ] || \
+	exit_failed "-->checkmd5 FAILED"
+
+erofs_umount
+teardown_hook
+

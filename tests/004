@@ -1,0 +1,35 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+. ./common
+
+testdir=$SCRATCH_MNT/test4
+imgfile=${testdir}.img
+
+rm -rf $testdir
+mkdir -p $testdir
+
+teardown_hook() {
+	rm -rf $testdir
+}
+
+
+[ "$(id -u)" = "0" ] || \
+	exit_skipped "This testcase must be run as root, skipped."
+
+# test character device
+mknod $testdir/nulldev c 1 3
+
+# test block device
+mknod $testdir/loopdev b 7 123
+
+erofs_mkfs "$imgfile $testdir"
+sz=$(file_size "$imgfile")
+
+teardown_hook
+
+if [ $sz -le 0 ]; then
+	echo "invalid size $sz"
+	exit 1
+fi
+

@@ -1,0 +1,20 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+. ./common
+
+imgfile="$SCRATCH_MNT/test12.img"
+[ -f "$imgfile" ] || \
+	exit_skipped "cannot find lz4 compressed image, skipped."
+
+teardown_hook() {
+	umount "$TEST_DIR" 2> /dev/null
+	rm -rf "$imgfile"
+}
+
+erofs_mount "$imgfile"
+verify_image "$TEST_DIR" ../
+
+erofs_umount
+teardown_hook
+

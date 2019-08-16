@@ -1,0 +1,34 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+. ./common
+
+testdir=$SCRATCH_MNT/test11
+outputfile=${testdir}.img
+
+rm -rf $testdir
+mkdir -p $testdir
+
+dirs=`find ../ -maxdepth 1 -type d -printf '%p:'`
+IFS=':'
+for d in $dirs; do
+	[ $d = '../' ] && continue
+	[ -z "${d##\.\./tests*}" ] && continue
+	[ -z "${d##\.\./\.*}" ] && continue
+	cp -nR $d $testdir
+done
+
+teardown_hook() {
+	rm -rf $testdir
+}
+
+erofs_mkfs "$outputfile $testdir"
+sz=$(file_size "$outputfile")
+
+teardown_hook
+
+if [ $sz -le 0 ]; then
+	echo "invalid size $sz"
+	exit 1
+fi
+
