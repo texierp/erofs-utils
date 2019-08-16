@@ -1,0 +1,77 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0+
+
+# all tests should use a common language setting to prevent golden
+# output mismatches.
+export LANG=C
+export LC_ALL=C
+
+MKFS_F2FS_PROG=../mkfs/mkfs.erofs
+
+mkdir -p $TEST_DIR
+
+teardown_hook() {
+	:
+}
+
+exit_failed() {
+	echo "$1"
+	teardown_hook
+	exit 1
+}
+
+exit_skipped() {
+	echo "$1"
+	teardown_hook
+	exit 77
+}
+
+erofs_mkfs_err() {
+	eval $MKFS_F2FS_PROG $1 2>/dev/null && exit_failed " --> mkfs.erofs XPASSED"
+}
+
+erofs_mkfs() {
+	eval $MKFS_F2FS_PROG $1 || exit_failed " --> mkfs.erofs FAILED"
+}
+
+check_erofs() {
+	cat /proc/filesystems | grep erofs > /dev/null || \
+	exit_skipped "This kernel doesn't support EROFS filesystem, skipped."
+}
+
+erofs_mount() {
+	local dev
+
+	check_erofs
+	[ "$(id -u)" = "0" ] || \
+		exit_skipped "This testcase must be run as root, skipped."
+
+	dev=$1
+	[ -f $1 ] && dev="-o loop $dev"
+	eval mount -t erofs $dev "$TEST_DIR" || exit_failed " --> mount FAILED"
+}
+
+erofs_umount() {
+	umount "$TEST_DIR" || exit_failed " --> umount FAILED"
+}
+
+file_size() {
+	stat -c "%s" "$1"
+}
+
+# verify all regular files in the image
+verify_image() {
+	IFS=':'
+	for f in `find $1 ! -type d -printf '%p:'`; do
+		#g=${f/#$1/$2\/}
+		g="$2""${f#$1/}"
+
+		[ 'x'$(file_size $f) = 'x'$(file_size $g) ] || \
+			exit_failed "--> checksz FAILED"
+
+		fmd5=$(md5sum $f| cut -d' ' -f1)
+		gmd5=$(md5sum $g| cut -d' ' -f1)
+		[ 'x'$fmd5 = 'x'$gmd5 ] || exit_failed "--> checkmd5 FAILED"
+	done
+}
+
