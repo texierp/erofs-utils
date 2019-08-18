@@ -24,6 +24,9 @@
 #ifdef HAVE_LINUX_TYPES_H
 #include <linux/types.h>
 #endif
+#ifndef UNUSED
+#define UNUSED(_X)    ((void) _X)
+#endif
 
 /*
  * container_of - cast a member of a structure out to the containing structure

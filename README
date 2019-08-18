@@ -2,7 +2,8 @@ erofs-utils
 ===========
 
 erofs-utils includes user-space tools for erofs filesystem images.
-Currently only mkfs.erofs is available.
+One is mkfs.erofs to create a image, the other is erofsfuse which
+is used to mount a image on a directory
 
 mkfs.erofs
 ----------
@@ -79,6 +80,31 @@ git://git.kernel.org/pub/scm/linux/kernel/git/xiang/erofs-utils.git -b obsoleted
 It may still be useful since new erofs-utils has not been widely used in
 commercial products. However, if that happens, please report bug to us
 as well.
+
+erofs-utils: erofsfuse
+----------------------
+erofsfuse mount a erofs filesystem image created by mkfs.erofs to a directory, and then
+It can be listed, read files and so on.
+
+Dependencies
+~~~~~~~~~~~~
+FUSE library version: 2.9.7
+fusermount version: 2.9.7
+using FUSE kernel interface version 7.19
+
+How to installed fuse
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+sudo apt-get update
+sudo apt-get install -y fuse libfuse-dev
+
+How to build erofsfuse
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	$ ./autogen.sh
+	$ ./configure
+	$ make
+
+erofsfuse binary will be generated under fuse folder.
 
 Contribution
 ------------

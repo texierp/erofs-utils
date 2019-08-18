@@ -3,4 +3,4 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS=lib mkfs
+SUBDIRS=lib mkfs fuse

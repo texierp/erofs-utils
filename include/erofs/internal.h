@@ -45,6 +45,8 @@ typedef u32 erofs_blk_t;
 #define blknr_to_addr(nr)       ((erofs_off_t)(nr) * EROFS_BLKSIZ)
 
 #define BLK_ROUND_UP(addr)	DIV_ROUND_UP(addr, EROFS_BLKSIZ)
+#define IS_SLOT_ALIGN(__ADDR)   (((__ADDR) % (EROFS_SLOTSIZE)) ? 0 : 1)
+#define IS_BLK_ALIGN(__ADDR)    (((__ADDR) % (EROFS_BLKSIZ)) ? 0 : 1)
 
 struct erofs_buffer_head;
 
@@ -98,10 +100,45 @@ struct erofs_inode {
 	void *compressmeta;
 };
 
+struct erofs_vnode {
+	uint8_t data_mapping_mode;
+
+	uint32_t i_size;
+	/* inline size in bytes */
+	uint16_t inode_isize;
+	uint16_t xattr_isize;
+
+	uint16_t xattr_shared_count;
+	char *xattr_shared_xattrs;
+
+	erofs_blk_t raw_blkaddr;
+	erofs_nid_t nid;
+	uint32_t i_ino;
+
+	uint16_t i_mode;
+	uint16_t i_uid;
+	uint16_t i_gid;
+	uint16_t i_nlink;
+
+	/* if file is inline read inline data witch inode */
+	char *idata;
+};
+
 static inline bool is_inode_layout_compression(struct erofs_inode *inode)
 {
 	return erofs_inode_is_data_compressed(inode->data_mapping_mode);
 }
+
+#define __inode_advise(x, bit, bits) \
+		(((x) >> (bit)) & ((1 << (bits)) - 1))
+
+#define __inode_version(advise)	\
+		__inode_advise(advise, EROFS_I_VERSION_BIT,	\
+			EROFS_I_VERSION_BITS)
+
+#define __inode_data_mapping(advise)	\
+	__inode_advise(advise, EROFS_I_DATA_MAPPING_BIT,\
+		EROFS_I_DATA_MAPPING_BITS)
 
 #define IS_ROOT(x)	((x) == (x)->i_parent)
 
