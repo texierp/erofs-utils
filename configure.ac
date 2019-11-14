@@ -191,9 +191,17 @@ if test "x$enable_lz4" = "xyes"; then
   CPPFLAGS=${saved_CPPFLAGS}
 fi
 
+AC_CHECK_HEADERS(lzma.h,
+  AC_CHECK_LIB(lzma, lzma_code,[
+      have_liblzma="yes"
+      LZMA_LIBS="-llzma"
+      AC_DEFINE([XZ_ENABLED], [1], [Define to 1 if xz is enabled.])
+    ], [have_liblzma="no"]))
+
 # Set up needed symbols, conditionals and compiler/linker flags
 AM_CONDITIONAL([ENABLE_LZ4], [test "x${have_lz4}" = "xyes"])
 AM_CONDITIONAL([ENABLE_LZ4HC], [test "x${have_lz4hc}" = "xyes"])
+AM_CONDITIONAL([ENABLE_XZ], [test "x${have_liblzma}" = "xyes"])
 
 if test "x$have_uuid" = "xyes"; then
   AC_DEFINE([HAVE_LIBUUID], 1, [Define to 1 if libuuid is found])
@@ -212,6 +220,10 @@ if test "x${have_lz4}" = "xyes"; then
     test -z "${with_lz4_libdir}" || LZ4_LIBS="-R ${with_lz4_libdir} $LZ4_LIBS"
   fi
   LIBS="$LZ4_LIBS $LIBS"
+fi
+
+if test "x${have_liblzma}" = "xyes"; then
+LIBS="$LZMA_LIBS $LIBS"
 fi
 
 AC_CONFIG_FILES([Makefile

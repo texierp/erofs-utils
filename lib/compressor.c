@@ -19,6 +19,9 @@ static struct erofs_compressor *compressors[] = {
 #endif
 		&erofs_compressor_lz4,
 #endif
+#if XZ_ENABLED
+		&erofs_compressor_xz,
+#endif
 };
 
 int erofs_compress_destsize(struct erofs_compress *c,

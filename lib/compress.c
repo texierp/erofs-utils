@@ -23,7 +23,7 @@ static int compressionlevel;
 static struct z_erofs_map_header mapheader;
 
 struct z_erofs_vle_compress_ctx {
-	u8 *metacur;
+	u8 *metacur, *dstbuf;
 
 	u8 queue[EROFS_CONFIG_COMPR_MAX_SZ * 2];
 	unsigned int head, tail;
@@ -114,8 +114,7 @@ static void vle_write_indexes(struct z_erofs_vle_compress_ctx *ctx,
 }
 
 static int write_uncompressed_block(struct z_erofs_vle_compress_ctx *ctx,
-				    unsigned int *len,
-				    char *dst)
+				    unsigned int *len, u8 *dst)
 {
 	int ret;
 	unsigned int count;
@@ -148,11 +147,10 @@ static int vle_compress_one(struct erofs_inode *inode,
 			    bool final)
 {
 	struct erofs_compress *const h = &compresshandle;
+	u8 *const dst = ctx->dstbuf;
 	unsigned int len = ctx->tail - ctx->head;
 	unsigned int count;
 	int ret;
-	static char dstbuf[EROFS_BLKSIZ * 2];
-	char *const dst = dstbuf + EROFS_BLKSIZ;
 
 	while (len) {
 		bool raw;
@@ -389,21 +387,28 @@ int z_erofs_convert_to_compacted_format(struct erofs_inode *inode,
 
 int erofs_write_compressed_file(struct erofs_inode *inode)
 {
-	struct erofs_buffer_head *bh;
 	struct z_erofs_vle_compress_ctx ctx;
+	u8 *compressmeta, *dstbuf;
+	int ret, fd;
+	struct erofs_buffer_head *bh;
 	erofs_off_t remaining;
 	erofs_blk_t blkaddr, compressed_blocks;
 	unsigned int legacymetasize;
-	int ret, fd;
 
-	u8 *compressmeta = malloc(vle_compressmeta_capacity(inode->i_size));
-	if (!compressmeta)
+	dstbuf = malloc((EROFS_BLKSIZ + compresshandle.paddingdstsz) * 2);
+	if (!dstbuf)
 		return -ENOMEM;
+
+	compressmeta = malloc(vle_compressmeta_capacity(inode->i_size));
+	if (!compressmeta) {
+		ret = -ENOMEM;
+		goto err_freedstbuf;
+	}
 
 	fd = open(inode->i_srcpath, O_RDONLY | O_BINARY);
 	if (fd < 0) {
 		ret = -errno;
-		goto err_free;
+		goto err_freemeta;
 	}
 
 	/* allocate main data buffer */
@@ -418,6 +423,7 @@ int erofs_write_compressed_file(struct erofs_inode *inode)
 	blkaddr = erofs_mapbh(bh->block, true);	/* start_blkaddr */
 	ctx.blkaddr = blkaddr;
 	ctx.metacur = compressmeta + Z_EROFS_LEGACY_MAP_HEADER_SIZE;
+	ctx.dstbuf = dstbuf + EROFS_BLKSIZ + compresshandle.paddingdstsz;
 	ctx.head = ctx.tail = 0;
 	ctx.clusterofs = 0;
 	remaining = inode->i_size;
@@ -486,8 +492,10 @@ err_bdrop:
 	erofs_bdrop(bh, true);	/* revoke buffer */
 err_close:
 	close(fd);
-err_free:
+err_freemeta:
 	free(compressmeta);
+err_freedstbuf:
+	free(dstbuf);
 	return ret;
 }
 
@@ -495,6 +503,8 @@ static int erofs_get_compress_algorithm_id(const char *name)
 {
 	if (!strcmp(name, "lz4") || !strcmp(name, "lz4hc"))
 		return Z_EROFS_COMPRESSION_LZ4;
+	if (!strcmp(name, "xz"))
+		return Z_EROFS_COMPRESSION_XZ;
 	return -ENOTSUP;
 }
 

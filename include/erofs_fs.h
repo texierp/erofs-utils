@@ -194,6 +194,7 @@ static inline unsigned int erofs_xattr_entry_size(struct erofs_xattr_entry *e)
 /* available compression algorithm types (for h_algorithmtype) */
 enum {
 	Z_EROFS_COMPRESSION_LZ4	= 0,
+	Z_EROFS_COMPRESSION_XZ = 1,
 	Z_EROFS_COMPRESSION_MAX
 };
 
