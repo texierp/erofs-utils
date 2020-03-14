@@ -18,13 +18,17 @@ typedef unsigned short umode_t;
 
 #include "erofs_fs.h"
 #include <fcntl.h>
+#include <limits.h>
 
 #ifndef PATH_MAX
 #define PATH_MAX        4096    /* # chars in a path name including nul */
 #endif
 
 #define PAGE_SHIFT		(12)
+
+#ifndef PAGE_SIZE
 #define PAGE_SIZE		(1U << PAGE_SHIFT)
+#endif
 
 #define LOG_BLOCK_SIZE          (12)
 #define EROFS_BLKSIZ            (1U << LOG_BLOCK_SIZE)
